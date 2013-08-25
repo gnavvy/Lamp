@@ -18,7 +18,7 @@ void Lamp::project(const vector<double> &seed, const vector<double> &projSeed,
 
     vec alpha(k); alpha.fill(0.0);
     for (int p = 0; p < m; p++) {  // for each data point
-        vector<double> xvec(data.begin()+p*d, data.begin()+p*d+d-1);
+        vector<double> xvec(data.begin()+p*d, data.begin()+p*d+d);
         vec x(xvec);
         vec xsum(d); xsum.fill(0.0);
         vec ysum(r); ysum.fill(0.0);
@@ -30,8 +30,8 @@ void Lamp::project(const vector<double> &seed, const vector<double> &projSeed,
         double alphasum = 0.0;
         for (int s = 0; s < k; s++) {
             // copy feature vector of each seed point to corresponding vector
-            vector<double> seedOrigVec(seed.begin()+s*d, seed.begin()+s*d+d-1);
-            vector<double> seedProjVec(projSeed.begin()+s*r, projSeed.begin()+s*r+r-1);
+            vector<double> seedOrigVec(seed.begin()+s*d, seed.begin()+(s+1)*d);
+            vector<double> seedProjVec(projSeed.begin()+s*r, projSeed.begin()+(s+1)*r);
             vec xseed(seedOrigVec);
             vec yseed(seedProjVec);
             // compute weight alpha for each seed
@@ -41,9 +41,8 @@ void Lamp::project(const vector<double> &seed, const vector<double> &projSeed,
             }
             // copy feature directly if a point is coincident to the seed point
             if (alpha(s) == 0.0) {
-                for (int i = 0; i < r; i++) {
+                for (int i = 0; i < r; i++)
                     projData[p*r+i] = seedProjVec[i];
-                }
                 coincide = true;
                 break;
             }
@@ -66,16 +65,16 @@ void Lamp::project(const vector<double> &seed, const vector<double> &projSeed,
         mat A(k,d), B(k,r);
         for (int s = 0; s < k; s++) {
             // copy feature vector of each seed point to corresponding vector
-            vector<double> seedFeatureVec(seed.begin()+s*d, seed.begin()+s*d+d-1);
-            vector<double> seedProjVec(projSeed.begin()+s*r, projSeed.begin()+s*r+r-1);
+            vector<double> seedFeatureVec(seed.begin()+s*d, seed.begin()+(s+1)*d);
+            vector<double> seedProjVec(projSeed.begin()+s*r, projSeed.begin()+(s+1)*r);
             vec xseed(seedFeatureVec);
             vec yseed(seedProjVec);
             // equation (4 ~ 6)
+            vec xhat = xseed - xtilde;
+            vec yhat = yseed - ytilde;
             double wsqrt = sqrt(alpha(s));
-            vec xhat = (xseed - xtilde) * wsqrt;
-            vec yhat = (yseed - ytilde) * wsqrt;
-            A.row(s) = xhat;
-            B.row(s) = yhat;
+            A.row(s) = wsqrt * xhat.t();
+            B.row(s) = wsqrt * yhat.t();
         }
         //==============================================================
         // STEP 3: Projection
@@ -85,9 +84,9 @@ void Lamp::project(const vector<double> &seed, const vector<double> &projSeed,
         mat U, V(r,r);
         vec S(r);
         svd(U, S, V, AtB);
-        mat M = U * V;
+        mat M = AtB * V;
         // equation (8)
-        vec y = (x - xtilde) * M + ytilde;
+        vec y = ((x - xtilde).t() * M + ytilde.t()).t();
         // copy projection result of each seed to output vector
         for (int i = 0; i < r; i++) {
             projData[p*r+i] = y(i);
