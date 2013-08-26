@@ -14,7 +14,7 @@ void Lamp::project(const vector<double> &seed, const vector<double> &projSeed,
     int k = numSeed;
     int r = numProjDim;
 
-    projData.resize(m, 0.0);
+    projData.resize(m*2, 0.0);
 
     vec alpha(k); alpha.fill(0.0);
     for (int p = 0; p < m; p++) {  // for each data point
@@ -79,17 +79,19 @@ void Lamp::project(const vector<double> &seed, const vector<double> &projSeed,
         //==============================================================
         // STEP 3: Projection
         //==============================================================
-        // equation (7)
+        // equation (7) SVD
         mat AtB = A.t() * B;
-        mat U, V(r,r);
-        vec S(r);
-        svd(U, S, V, AtB);
-        mat M = AtB * V;
+        mat U(d,d), V(r,r);
+        vec s(r);
+        svd(U, s, V, AtB);
         // equation (8)
+        mat S = zeros(d,r);
+        for (int i = 0; i < r; i++)
+            S(i,i) = s(i) > 0.5 ? 1.0 : 0.0;
+        mat M = U * S * V;  // M(d,r)
         vec y = ((x - xtilde).t() * M + ytilde.t()).t();
         // copy projection result of each seed to output vector
-        for (int i = 0; i < r; i++) {
+        for (int i = 0; i < r; i++)
             projData[p*r+i] = y(i);
-        }
     }
 }
